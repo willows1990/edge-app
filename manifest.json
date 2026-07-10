@@ -1,11 +1,9 @@
 {
   "name": "Racing Edge",
   "short_name": "Racing Edge",
-  "description": "Racing Edge mobile betting workspace",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#061017",
   "theme_color": "#061017",
   "icons": [

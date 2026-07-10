@@ -1,7 +1,9 @@
-const CACHE_NAME = 'racing-edge-v1.3.6';
+const CACHE_NAME = 'racing-edge-v1.4.0';
 const APP_SHELL = [
   './',
   './index.html',
+  './styles.css',
+  './app.js',
   './manifest.json',
   './version.json',
   './icons/icon-192.png',

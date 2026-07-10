@@ -1,65 +1,10 @@
-# Racing App Changelog
+# Changelog
 
-## v1.3 --- Stable Baseline
+## v1.4.0 — Foundation refactor
 
-*Date: Current milestone*
-
-### Markets
-
--   Horses feed complete.
--   Golf (DG + EX) feeds complete.
--   Horse/Golf combined edge.
--   Shop filtering.
--   DG toggle with reliable switching.
--   Snapshot star logic.
--   Golf defaults to Place EV.
--   Horses default to Total EV.
-
-### Selections
-
--   Versioned snapshot saving.
--   Editable snapshots.
--   Reset to Original.
--   Total EV / Place EV view transform.
--   Shop → Edge → Subgroup organisation.
--   Golf subgroups (DP / PGA).
--   Snapshot timestamps.
--   Exact snapshot matching.
-
-### UI & Design
-
--   Glass UI.
--   Universal colour language.
--   Shop pills as primary identifiers.
--   Grey pills as secondary identifiers.
--   Responsive mobile layout.
-
-### Core Design Principles
-
--   Markets are always live.
--   Selections are immutable user snapshots.
--   Editing never changes the live market.
--   A star means an identical snapshot exists.
--   Colour always conveys meaning.
--   Progressive disclosure over clutter.
-
-------------------------------------------------------------------------
-
-## Planned v2.0 --- Bet Maker
-
-### Objectives
-
--   Matrix engine.
--   Multiple bet types.
--   Staking calculator.
--   Portfolio summaries.
--   EV analysis.
--   Bet optimisation.
-
-### Future Ideas
-
--   Selection notes.
--   Historical market movement.
--   Trend indicators.
--   Additional sports.
--   Alerts and notifications.
+- Consolidated repeated CSS rules and removed stale override layers.
+- Split the monolithic file into `index.html`, `styles.css`, and `app.js`.
+- Added one authoritative viewport, full-background, safe-area, and fixed-navigation layout.
+- Updated PWA cache/version files.
+- Added the approved blue-and-white horse icon.
+- Preserved the existing Racing Edge name until the replacement is chosen.
