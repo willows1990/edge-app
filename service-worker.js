@@ -1,4 +1,4 @@
-const CACHE_NAME = 'racing-edge-v1.3.3-pwa-v1.3.3';
+const CACHE_NAME = 'racing-edge-v1.3.4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -26,23 +26,26 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
 
-  // Keep app HTML fresh when online, fallback offline.
   if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
-      fetch(request).then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+      fetch(request, { cache: 'no-store' }).then(response => {
+        const type = response.headers.get('content-type') || '';
+        if (response.ok && type.includes('text/html')) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+        }
         return response;
       }).catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // Static assets: cache first, network fallback.
   event.respondWith(
     caches.match(request).then(cached => cached || fetch(request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      }
       return response;
     }))
   );
