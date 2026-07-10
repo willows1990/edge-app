@@ -1,9 +1,7 @@
-const CACHE_NAME = 'racing-edge-v1.4.0';
+const CACHE_NAME = 'racing-edge-v1.4.1';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css',
-  './app.js',
   './manifest.json',
   './version.json',
   './icons/icon-192.png',
@@ -17,9 +15,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(key => {
-      if (key !== CACHE_NAME) return caches.delete(key);
-    })))
+    caches.keys().then(keys => Promise.all(keys.map(key => key === CACHE_NAME ? null : caches.delete(key))))
   );
   self.clients.claim();
 });
@@ -30,14 +26,16 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
-      fetch(request, { cache: 'no-store' }).then(response => {
-        const type = response.headers.get('content-type') || '';
-        if (response.ok && type.includes('text/html')) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
-        }
-        return response;
-      }).catch(() => caches.match('./index.html'))
+      fetch(request, { cache: 'no-store' })
+        .then(response => {
+          const type = response.headers.get('content-type') || '';
+          if (response.ok && type.includes('text/html')) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
