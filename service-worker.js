@@ -1,4 +1,4 @@
-const CACHE_NAME = 'racing-edge-v1.3.1-pwa-1';
+const CACHE_NAME = 'racing-edge-v1.3.3-pwa-v1.3.3';
 const APP_SHELL = [
   './',
   './index.html',
