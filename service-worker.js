@@ -1,23 +1,52 @@
-{
-  "name": "Racing Edge",
-  "short_name": "Racing Edge",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "background_color": "#061017",
-  "theme_color": "#061017",
-  "icons": [
-    {
-      "src": "icons/edge-horse-v2-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/edge-horse-v2-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
-}
+const CACHE_NAME = 'racing-edge-v1.4.3';
+const APP_SHELL = [
+  './',
+  './index.html',
+  './manifest.json',
+  './version.json',
+  './icons/edge-horse-v2-192.png',
+  './icons/edge-horse-v2-512.png'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.map(key => key === CACHE_NAME ? null : caches.delete(key))))
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  if (request.mode === 'navigate' || request.destination === 'document') {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+        .then(response => {
+          const type = response.headers.get('content-type') || '';
+          if (response.ok && type.includes('text/html')) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then(cached => cached || fetch(request).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      }
+      return response;
+    }))
+  );
+});
