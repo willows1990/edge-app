@@ -7,7 +7,7 @@
   <!-- PWA support -->
   <meta name="theme-color" content="#061017" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="Racing Edge" />
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -10632,5 +10632,30 @@ body {
 }
 .bottom-nav {
   bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important;
+}
+</style>
+
+<style id="pwa-nav-status-final-v1-3-5">
+/* iOS standalone polish: opaque status bar, 13px nav offset, full active segment. */
+.bottom-nav {
+  bottom: calc(13px + env(safe-area-inset-bottom, 0px)) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.nav-item {
+  min-width: 0 !important;
+  min-height: 78px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 10px 2px !important;
+  border-radius: 0 !important;
+}
+.nav-item.active {
+  border-radius: 0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(255,255,255,0.035) !important;
 }
 </style>
