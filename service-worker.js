@@ -1,9 +1,11 @@
-const CACHE_NAME = 'racing-edge-v1.4.6';
+const CACHE_NAME = 'racing-edge-v1.4.7';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  './version.json'
+  './version.json',
+  './icons/edge-horse-teal-v3-192.png',
+  './icons/edge-horse-teal-v3-512.png'
 ];
 
 self.addEventListener('install', event => {
