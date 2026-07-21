@@ -6599,6 +6599,14 @@ body::before {
           <label>Min Place EV %</label>
           <input id="minPlaceEv" type="number" value="0" />
         </div>
+        <div class="field top-market-filter-field" style="display:none;">
+          <label>Market</label>
+          <select id="topMarketFilter"><option value="">All Markets</option></select>
+        </div>
+        <div class="field top-source-filter-field" style="display:none;">
+          <label>Source</label>
+          <select id="topSourceFilter"><option value="">All Sources</option></select>
+        </div>
         <div class="field dg-filter-field" style="display:none;">
           <label>DG</label>
           <button id="dgFilter" class="dg-toggle on" type="button" value="on" aria-pressed="true">
@@ -6776,7 +6784,10 @@ body::before {
         edges: [
           { edgeId: "wh_shop_horses", edgeName: "Horses", edgeType: "Horses", sheetName: "WH_SHOP", gid: "1873059466" },
           { edgeId: "wh_shop_golf", edgeName: "Golf", edgeType: "Golf", sheetName: "DG_GOLF_PGA", sheetNames: ["DG_GOLF_PGA", "DG_GOLF_DP", "BFEX_GOLF_PGA", "BFEX_GOLF_DP"], dgSheetNames: ["DG_GOLF_PGA", "DG_GOLF_DP"], exSheetNames: ["BFEX_GOLF_PGA", "BFEX_GOLF_DP"], gid: "", dgOnly: false },
-          { edgeId: "wh_shop_horse_golf", edgeName: "Horse/Golf", edgeType: "Mixed", mixEdges: ["wh_shop_horses", "wh_shop_golf"] }
+          { edgeId: "wh_shop_horse_golf", edgeName: "Horse/Golf", edgeType: "Mixed", mixEdges: ["wh_shop_horses", "wh_shop_golf"] },
+          { edgeId: "wh_shop_horse_tops", edgeName: "Horse Tops", edgeType: "Horses", sheetName: "WH_PLACERS", gid: "", hidden: true, topMarket: true },
+          { edgeId: "wh_shop_golf_tops", edgeName: "Golf Tops", edgeType: "Golf", sheetName: "WH_GOLF_PLACERS", gid: "", hidden: true, topMarket: true },
+          { edgeId: "wh_shop_tops", edgeName: "Tops", edgeType: "Mixed", mixEdges: ["wh_shop_horse_tops", "wh_shop_golf_tops"], topMarket: true }
         ]
       },
       bf_shop: {
@@ -6852,6 +6863,11 @@ body::before {
       return (getActiveEdgeConfig()?.edgeType || getActiveEdgeConfig()?.edgeName || "").toLowerCase() === "mixed";
     }
 
+    function isTopsEdge() {
+      const edge = getActiveEdgeConfig() || {};
+      return !!edge.topMarket || String(edge.edgeName || "").toLowerCase() === "tops";
+    }
+
     function isRunnerGolf(r = {}) {
       const type = String(r.edgeType || r.itemType || r.dataType || r.edgeName || "").toLowerCase();
       return type === "golf" || String(r.dataEdgeName || "").toLowerCase() === "golf" || String(r.edgeId || "").toLowerCase().includes("golf") && !String(r.edgeId || "").toLowerCase().includes("horse_golf");
@@ -6876,7 +6892,7 @@ body::before {
 
     function applyDefaultSortForEdge() {
       const sort = document.getElementById("sortBy");
-      if (sort) sort.value = (isGolfEdge() || isMixedEdge()) ? "placeEv" : "totalEv";
+      if (sort) sort.value = (!isTopsEdge() && (isGolfEdge() || isMixedEdge())) ? "placeEv" : "totalEv";
     }
 
     function sourceMetaForActiveFeed() {
@@ -6968,7 +6984,7 @@ body::before {
       if (!edgeSelect) return;
       const feed = getActiveFeedConfig();
       if (!feed.edges.some(edge => edge.edgeId === activeEdgeId)) activeEdgeId = feed.edges[0].edgeId;
-      edgeSelect.innerHTML = feed.edges.map(edge => `<option value="${edge.edgeId}">${edge.edgeName}</option>`).join("");
+      edgeSelect.innerHTML = feed.edges.filter(edge => !edge.hidden).map(edge => `<option value="${edge.edgeId}">${edge.edgeName}</option>`).join("");
       edgeSelect.value = activeEdgeId;
     }
 
@@ -7073,6 +7089,79 @@ body::before {
         }
         return fallback;
       };
+      const sheetNameUpper = String(sourceMeta.sheetName || "").toUpperCase();
+
+      if (sheetNameUpper === "WH_PLACERS") {
+        return dataRows.map(row => {
+          const market = String(row[2] || "").trim();
+          const places = cleanNumber(market.replace(/[^0-9.]/g, ""));
+          const odds = cleanNumber(row[6]);
+          const fair = cleanNumber(row[7]);
+          const rating = cleanNumber(row[8]) || calcEvPercent(odds, fair);
+          return {
+            ...sourceMeta,
+            sourceSheetName: "WH_PLACERS",
+            dataSource: "wh",
+            dataEdgeName: "Horse",
+            isTopMarket: true,
+            topMarket: market,
+            marketMatched: String(row[4] || "").trim(),
+            selectionMatched: String(row[5] || "").trim(),
+            horse: String(row[3] || "").trim(),
+            meet: String(row[0] || "").trim(),
+            time: String(row[1] || "").trim(),
+            bookie: "WH",
+            odds,
+            winOdds: odds,
+            winF: fair,
+            winEv: rating,
+            placeOdds: 0,
+            placeF: 0,
+            placeEv: rating,
+            totalEv: rating,
+            p: places,
+            t: ""
+          };
+        }).filter(r => r.horse && r.odds > 0 && r.topMarket).sort((a,b) => b.totalEv - a.totalEv);
+      }
+
+      if (sheetNameUpper === "WH_GOLF_PLACERS") {
+        return dataRows.map(row => {
+          const market = String(row[4] || "").trim();
+          const places = cleanNumber(market.replace(/[^0-9.]/g, ""));
+          const odds = cleanNumber(row[2]);
+          const fair = cleanNumber(row[3]);
+          const rating = cleanNumber(row[5]) || calcEvPercent(odds, fair);
+          const source = String(row[6] || "").trim();
+          return {
+            ...sourceMeta,
+            sourceSheetName: "WH_GOLF_PLACERS",
+            comp: "",
+            dataSource: source.toLowerCase() === "bfex" ? "ex" : "dg",
+            dataEdgeName: "Golf",
+            isTopMarket: true,
+            topMarket: market,
+            marketMatched: String(row[7] || "").trim(),
+            selectionMatched: String(row[8] || "").trim(),
+            horse: String(row[1] || "").trim(),
+            meet: String(row[0] || "").trim(),
+            time: "",
+            bookie: "WH",
+            odds,
+            winOdds: odds,
+            winF: fair,
+            winEv: rating,
+            placeOdds: odds,
+            placeF: fair,
+            placeEv: rating,
+            totalEv: rating,
+            p: places,
+            t: "",
+            topSource: source
+          };
+        }).filter(r => r.horse && r.odds > 0 && r.topMarket).sort((a,b) => b.totalEv - a.totalEv);
+      }
+
       const validGolfPlaces = [5, 8, 10, 12];
       const golfPlacesFromRow = (row, primaryIdx) => {
         const primary = cleanNumber(val(row, [primaryIdx], 0));
@@ -7246,9 +7335,13 @@ body::before {
 
     function getLastUpdatedFromSheet(csvText, edgeType = "Horses") {
       const rows = parseCSV(csvText).filter(r => r.some(c => String(c).trim() !== ""));
-      if (String(edgeType).toLowerCase() === "golf") {
-        // Golf sheets store the true source refresh timestamp in N2.
+      const type = String(edgeType).toLowerCase();
+      if (type === "golf") {
+        // Standard golf sheets store the true source refresh timestamp in N2.
         return rows[1] && rows[1][13] ? String(rows[1][13]).trim() : "";
+      }
+      if (rows[0] && rows[0][13] && /^\d{4}-\d{2}-\d{2}/.test(String(rows[0][13]).trim())) {
+        return String(rows[0][13]).trim();
       }
       return rows[1] && rows[1][0] ? String(rows[1][0]).trim() : "";
     }
@@ -7569,8 +7662,8 @@ body::before {
       return "ev-yellow";
     }
 
-    const FILTER_DEFAULTS = { meet: "", time: "", minOdds: 1, maxOdds: 41, minEv: 0, minPlaceEv: 0, dg: "on" };
-    const GOLF_FILTER_DEFAULTS = { meet: "", time: "", minOdds: 1, maxOdds: 1001, minEv: 0, minPlaceEv: 0, dg: "on" };
+    const FILTER_DEFAULTS = { meet: "", time: "", minOdds: 1, maxOdds: 41, minEv: 0, minPlaceEv: 0, dg: "on", topMarket: "", topSource: "" };
+    const GOLF_FILTER_DEFAULTS = { meet: "", time: "", minOdds: 1, maxOdds: 1001, minEv: 0, minPlaceEv: 0, dg: "on", topMarket: "", topSource: "" };
     const savedFilterState = JSON.parse(localStorage.getItem("marketFilterStateByEdgeType") || "{}");
     const workingFilterState = JSON.parse(JSON.stringify(savedFilterState));
     let activeMixedFilterTab = "horse";
@@ -7595,7 +7688,9 @@ body::before {
         maxOdds: Number(filters.maxOdds ?? defaults.maxOdds),
         minEv: Number(filters.minEv ?? defaults.minEv),
         minPlaceEv: Number(filters.minPlaceEv ?? defaults.minPlaceEv),
-        dg: filters.dg || defaults.dg
+        dg: filters.dg || defaults.dg,
+        topMarket: filters.topMarket || "",
+        topSource: filters.topSource || ""
       };
     }
 
@@ -7607,7 +7702,9 @@ body::before {
         Number(a.maxOdds) === Number(b.maxOdds) &&
         Number(a.minEv) === Number(b.minEv) &&
         Number(a.minPlaceEv) === Number(b.minPlaceEv) &&
-        String(a.dg || "on") === String(b.dg || "on");
+        String(a.dg || "on") === String(b.dg || "on") &&
+        String(a.topMarket || "") === String(b.topMarket || "") &&
+        String(a.topSource || "") === String(b.topSource || "");
     }
 
     function getAppliedFilters(kind = null) {
@@ -7633,7 +7730,9 @@ body::before {
         maxOdds: document.getElementById("maxOdds").value,
         minEv: document.getElementById("minEv").value,
         minPlaceEv: document.getElementById("minPlaceEv").value,
-        dg: document.getElementById("dgFilter")?.value || "on"
+        dg: document.getElementById("dgFilter")?.value || "on",
+        topMarket: document.getElementById("topMarketFilter")?.value || "",
+        topSource: document.getElementById("topSourceFilter")?.value || ""
       }, isMixedEdge() ? activeMixedFilterTab : null);
     }
 
@@ -7645,6 +7744,10 @@ body::before {
       document.getElementById("maxOdds").value = filters.maxOdds;
       document.getElementById("minEv").value = filters.minEv;
       document.getElementById("minPlaceEv").value = filters.minPlaceEv;
+      const topMarket = document.getElementById("topMarketFilter");
+      if (topMarket) topMarket.value = [...topMarket.options].some(o => o.value === filters.topMarket) ? filters.topMarket : "";
+      const topSource = document.getElementById("topSourceFilter");
+      if (topSource) topSource.value = [...topSource.options].some(o => o.value === filters.topSource) ? filters.topSource : "";
       const dg = document.getElementById("dgFilter");
       if (dg) {
         dg.value = filters.dg || "on";
@@ -7694,8 +7797,24 @@ body::before {
       setFilterLabel("timeFilter", golf ? "Places" : "Time");
       setFilterLabel("minEv", golf ? "Min Total %" : "Min EV %");
       setFilterLabel("minPlaceEv", golf ? "Min Place %" : "Min Place EV %");
+      const tops = isTopsEdge();
       const dgField = document.querySelector(".dg-filter-field");
-      if (dgField) dgField.style.display = golf ? "block" : "none";
+      if (dgField) dgField.style.display = golf && !tops ? "block" : "none";
+      const topMarketField = document.querySelector(".top-market-filter-field");
+      const topSourceField = document.querySelector(".top-source-filter-field");
+      if (topMarketField) topMarketField.style.display = tops ? "block" : "none";
+      if (topSourceField) topSourceField.style.display = tops && golf ? "block" : "none";
+
+      const topMarketSelect = document.getElementById("topMarketFilter");
+      if (topMarketSelect) {
+        const markets = [...new Set(scopedRunners.map(r => r.topMarket).filter(Boolean))].sort((a,b) => cleanNumber(a) - cleanNumber(b));
+        topMarketSelect.innerHTML = `<option value="">All Markets</option>` + markets.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+      }
+      const topSourceSelect = document.getElementById("topSourceFilter");
+      if (topSourceSelect) {
+        const sources = [...new Set(scopedRunners.map(r => r.topSource).filter(Boolean))].sort();
+        topSourceSelect.innerHTML = `<option value="">All Sources</option>` + sources.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+      }
 
       meetFilter.innerHTML = golf ? `<option value="">All Events</option>` : `<option value="">All Meets</option>`;
       timeFilter.innerHTML = golf ? `<option value="">All Places</option>` : `<option value="">All Times</option>`;
@@ -7739,6 +7858,8 @@ body::before {
       if (Number(r.odds || 0) < minOdds || Number(r.odds || 0) > maxOdds) return false;
       if (Number(r.totalEv || 0) < minEv) return false;
       if (Number(r.placeEv || 0) < minPlaceEv) return false;
+      if (filters.topMarket && String(r.topMarket || "") !== String(filters.topMarket)) return false;
+      if (filters.topSource && String(r.topSource || "") !== String(filters.topSource)) return false;
       return true;
     }
 
@@ -7768,8 +7889,8 @@ body::before {
       const edgeType = String(r.edgeType || "").toLowerCase();
       const isGolf = edgeType === "golf" || String(edgeId).toLowerCase().includes("golf");
       const base = isGolf
-        ? [edgeId, r.dataSource || "", r.horse || "", r.meet || "", r.p || "", r.bookie || ""]
-        : [edgeId, r.horse || "", r.meet || "", r.time || "", r.bookie || ""];
+        ? [edgeId, r.dataSource || "", r.horse || "", r.meet || "", r.topMarket || r.p || "", r.bookie || ""]
+        : [edgeId, r.horse || "", r.meet || "", r.time || "", r.topMarket || "", r.bookie || ""];
       const version = [r.winOdds || r.odds || "", r.winF || "", r.placeOdds || "", r.placeF || "", r.winEv || "", r.placeEv || "", r.totalEv || ""];
       return base.concat(version).map(v => String(v ?? "").trim()).join("|");
     }
@@ -7959,8 +8080,9 @@ body::before {
       feed.innerHTML = data.map((r, i) => {
         const rowGolf = isRunnerGolf(r);
         const sourceBadge = rowGolf && r.dataSource === "dg" ? `<span class="source-badge dg">DG</span>` : (rowGolf && r.dataSource === "ex" ? `<span class="source-badge ex">EX</span>` : "");
-        const oddsMatched = rowGolf && r.selectionMatched ? `<span class="matched-under">(${r.selectionMatched})</span>` : "";
-        const subLine = rowGolf ? `${r.meet} - ${Number(r.p || 0)} places` : `${r.meet} · ${r.time}`;
+        const topRow = !!r.isTopMarket;
+        const oddsMatched = r.selectionMatched ? `<span class="matched-under">(${escapeHtml(r.selectionMatched)})</span>` : "";
+        const subLine = rowGolf ? `${r.meet}${topRow ? ` - ${r.topMarket}` : ` - ${Number(r.p || 0)} places`}` : `${r.meet} · ${r.time}`;
         return `
         <article class="card">
           <div class="runner" onclick="this.closest('article').classList.toggle('open')">
@@ -7971,14 +8093,27 @@ body::before {
             </span>
             <span class="odds">${money(r.odds)}${oddsMatched}</span>
             <span class="pt-stack">
-              <span class="pill p${r.p}">${r.p}</span>
-              <span class="pill term ${r.t === '1/4' ? 'term-quarter' : ''}">${r.t}</span>
+              ${topRow ? `<span class="pill top-market-pill">${escapeHtml(r.topMarket)}</span>${rowGolf && r.topSource ? `<span class="pill term">${escapeHtml(r.topSource)}</span>` : ""}` : `<span class="pill p${r.p}">${r.p}</span><span class="pill term ${r.t === '1/4' ? 'term-quarter' : ''}">${r.t}</span>`}
             </span>
             <span class="ev metric-ev-pill ${activeEvMetric === 'placeEv' ? 'place-ev-display' : 'total-ev-display'} ${evClass(r[activeEvMetric])}" onclick="this.closest('.card').classList.toggle('open')" style="cursor:pointer;${evStyle(r[activeEvMetric])}">${Number(r[activeEvMetric]).toFixed(1)}%</span>
           </div>
-          <div class="more market-more ${rowGolf ? 'golf-more' : ''}">
+          <div class="more market-more ${rowGolf ? 'golf-more' : ''} ${topRow ? 'tops-more' : ''}">
             <div class="more-data">
-              ${rowGolf ? `
+              ${topRow ? `
+                <div class="more-col">
+                  <h4>PRICE</h4>
+                  <div class="info-row"><span>Odds</span><strong>${money(r.winOdds)}</strong></div>
+                  <div class="info-row"><span>Fair</span><strong>${money(r.winF)}</strong></div>
+                  <div class="info-row"><span>%</span><strong class="ev-chip ${evClass(r.totalEv)}" style="${evStyle(r.totalEv)}">${Number(r.totalEv).toFixed(1)}%</strong></div>
+                </div>
+                <div class="more-col">
+                  <h4>MARKET</h4>
+                  <div class="info-row"><span>Top</span><strong>${escapeHtml(r.topMarket)}</strong></div>
+                  <div class="info-row"><span>Mkt</span><strong>${escapeHtml(r.marketMatched || '—')}</strong></div>
+                  <div class="info-row"><span>Sel</span><strong>${escapeHtml(r.selectionMatched || '—')}</strong></div>
+                </div>
+                ${rowGolf ? `<div class="more-col"><h4>SOURCE</h4><div class="info-row"><span>Type</span><strong>${escapeHtml(r.topSource || (r.dataSource === 'ex' ? 'BFEX' : 'DG'))}</strong></div><div class="info-row"><span>Event</span><strong>${escapeHtml(r.meet)}</strong></div></div>` : ``}
+              ` : rowGolf ? `
                 <div class="more-col">
                   <h4>WIN</h4>
                   <div class="info-row"><span>Odds</span><strong>${money(r.winOdds)}</strong></div>
@@ -8959,7 +9094,7 @@ body::before {
         const golf = betSelectionIsGolf(selection);
         const parts = sourcePartsFromLabel(selection.sourceLabel || `${selection.shopName || "Legacy Feed"} - ${selection.edgeName || "Horses"}`);
         const shopClass = selection.shopId ? shopClassFromId(selection.shopId) : parts.shopClass;
-        const edgeName = golf ? "Golf" : "Horse";
+        const edgeName = String(selection.edgeName || "").toLowerCase() === "tops" ? "Tops" : (golf ? "Golf" : "Horse");
         const comp = golf ? (selection.comp || compFromSheetName(selection.sourceSheetName || selection.sheetName || "")) : "";
         const shopName = selection.shopName || parts.shopName || "Legacy Feed";
         return { golf, shopClass, shopName, shopNick: betShopNick(shopName), edgeName, comp };
@@ -9375,7 +9510,7 @@ body::before {
       });
     });
 
-    const filterInputIds = ["meetFilter", "timeFilter", "minOdds", "maxOdds", "minEv", "minPlaceEv", "dgFilter"];
+    const filterInputIds = ["meetFilter", "timeFilter", "minOdds", "maxOdds", "minEv", "minPlaceEv", "topMarketFilter", "topSourceFilter", "dgFilter"];
     filterInputIds.forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -10716,4 +10851,29 @@ body {
   max-height: 11px !important;
   margin-top: 3px !important;
 }
+
+    /* WH Tops edge */
+    .top-market-pill {
+      width:auto !important;
+      min-width:42px !important;
+      padding:0 6px !important;
+      background:rgba(72,145,210,.28) !important;
+      border:1px solid rgba(105,190,255,.22) !important;
+      color:#d8ecff !important;
+      white-space:nowrap;
+    }
+    .tops-more .more-data {
+      width:100% !important;
+      max-width:none !important;
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      gap:10px !important;
+    }
+    .tops-more.golf-more .more-data {
+      grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    }
+    .tops-more .more-col { width:auto !important; max-width:none !important; }
+    @media (max-width:390px) {
+      .tops-more.golf-more .more-data { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:6px !important; }
+      .tops-more .info-row { grid-template-columns:22px minmax(0,1fr) !important; }
+    }
 </style>
