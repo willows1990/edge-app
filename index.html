@@ -8093,7 +8093,7 @@ body::before {
             </span>
             <span class="odds">${money(r.odds)}${oddsMatched}</span>
             <span class="pt-stack">
-              ${topRow ? `<span class="pill top-market-pill p${Number(r.p || 0)}"><span>Top</span><strong>${Number(r.p || 0)}</strong></span>${rowGolf && r.topSource ? `<span class="pill term">${escapeHtml(r.topSource)}</span>` : ""}` : `<span class="pill p${r.p}">${r.p}</span><span class="pill term ${r.t === '1/4' ? 'term-quarter' : ''}">${r.t}</span>`}
+              ${topRow ? `<span class="pill top-market-pill p${Number(r.p || 0)}"><span>Top</span><strong>${Number(r.p || 0)}</strong></span>` : `<span class="pill p${r.p}">${r.p}</span><span class="pill term ${r.t === '1/4' ? 'term-quarter' : ''}">${r.t}</span>`}
             </span>
             <span class="ev metric-ev-pill ${activeEvMetric === 'placeEv' ? 'place-ev-display' : 'total-ev-display'} ${evClass(r[activeEvMetric])}" onclick="this.closest('.card').classList.toggle('open')" style="cursor:pointer;${evStyle(r[activeEvMetric])}">${Number(r[activeEvMetric]).toFixed(1)}%</span>
           </div>
@@ -9964,7 +9964,7 @@ body {
 
 </style>
 <script>
-  const APP_VERSION = "1.4.4";
+  const APP_VERSION = "1.4.5";
 
   function compareVersions(a, b) {
     const pa = String(a || "0").split('.').map(n => parseInt(n, 10) || 0);
@@ -10870,12 +10870,12 @@ body {
 
     /* WH Tops edge */
     .top-market-pill {
-      width:30px !important;
-      min-width:30px !important;
-      height:34px !important;
+      width:29px !important;
+      min-width:29px !important;
+      height:32px !important;
       padding:3px 2px !important;
       flex-direction:column !important;
-      gap:0 !important;
+      gap:2px !important;
       line-height:1 !important;
       white-space:normal !important;
       box-sizing:border-box !important;
@@ -10893,6 +10893,19 @@ body {
       font-weight:700;
       line-height:1.05;
     }
+
+    /* Additional Tops market colours */
+    .top-market-pill.p10 {
+      background: rgba(45, 185, 195, 0.25) !important;
+      color: #d7fbff !important;
+      border: 1px solid rgba(45, 185, 195, 0.16) !important;
+    }
+    .top-market-pill.p20 {
+      background: rgba(255, 145, 58, 0.25) !important;
+      color: #ffe3c5 !important;
+      border: 1px solid rgba(255, 145, 58, 0.16) !important;
+    }
+
     .tops-more .more-data {
       width:100% !important;
       max-width:none !important;
