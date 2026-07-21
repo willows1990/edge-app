@@ -1,11 +1,9 @@
-const CACHE_NAME = 'racing-edge-v1.4.3';
+const CACHE_NAME = 'racing-edge-v1.4.6';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  './version.json',
-  './icons/edge-horse-v2-192.png',
-  './icons/edge-horse-v2-512.png'
+  './version.json'
 ];
 
 self.addEventListener('install', event => {
@@ -15,7 +13,9 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(key => key === CACHE_NAME ? null : caches.delete(key))))
+    caches.keys().then(keys => Promise.all(
+      keys.map(key => key === CACHE_NAME ? null : caches.delete(key))
+    ))
   );
   self.clients.claim();
 });

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Racing Edge</title>
   <!-- PWA support -->
   <meta name="theme-color" content="#061017" />
@@ -9964,7 +9964,7 @@ body {
 
 </style>
 <script>
-  const APP_VERSION = "1.4.5";
+  const APP_VERSION = "1.4.6";
 
   function compareVersions(a, b) {
     const pa = String(a || "0").split('.').map(n => parseInt(n, 10) || 0);
@@ -10028,6 +10028,13 @@ body {
       });
     }
   </script>
+
+<script>
+  // iOS Safari/PWA fallback: prevent pinch gestures while preserving normal scrolling.
+  ["gesturestart", "gesturechange", "gestureend"].forEach((eventName) => {
+    document.addEventListener(eventName, (event) => event.preventDefault(), { passive: false });
+  });
+</script>
 </body>
 </html>
 
@@ -10919,5 +10926,12 @@ body {
     @media (max-width:390px) {
       .tops-more.golf-more .more-data { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:6px !important; }
       .tops-more .info-row { grid-template-columns:22px minmax(0,1fr) !important; }
+    }
+
+
+    /* v1.4.6 — fixed-scale PWA behaviour */
+    html,
+    body {
+      touch-action: pan-x pan-y;
     }
 </style>
