@@ -7854,7 +7854,7 @@ body::before {
           if (String(r.p || "") !== String(time)) return false;
         } else if (String(r.time || "") !== String(time)) return false;
       }
-      if (golf && isRunnerGolf(r) && dg !== "all" && (dg === "on" ? !r.dgOn : !!r.dgOn)) return false;
+      if (golf && isRunnerGolf(r) && !r.isTopMarket && dg !== "all" && (dg === "on" ? !r.dgOn : !!r.dgOn)) return false;
       if (Number(r.odds || 0) < minOdds || Number(r.odds || 0) > maxOdds) return false;
       if (Number(r.totalEv || 0) < minEv) return false;
       if (Number(r.placeEv || 0) < minPlaceEv) return false;
@@ -8093,7 +8093,7 @@ body::before {
             </span>
             <span class="odds">${money(r.odds)}${oddsMatched}</span>
             <span class="pt-stack">
-              ${topRow ? `<span class="pill top-market-pill">${escapeHtml(r.topMarket)}</span>${rowGolf && r.topSource ? `<span class="pill term">${escapeHtml(r.topSource)}</span>` : ""}` : `<span class="pill p${r.p}">${r.p}</span><span class="pill term ${r.t === '1/4' ? 'term-quarter' : ''}">${r.t}</span>`}
+              ${topRow ? `<span class="pill top-market-pill p${Number(r.p || 0)}"><span>Top</span><strong>${Number(r.p || 0)}</strong></span>${rowGolf && r.topSource ? `<span class="pill term">${escapeHtml(r.topSource)}</span>` : ""}` : `<span class="pill p${r.p}">${r.p}</span><span class="pill term ${r.t === '1/4' ? 'term-quarter' : ''}">${r.t}</span>`}
             </span>
             <span class="ev metric-ev-pill ${activeEvMetric === 'placeEv' ? 'place-ev-display' : 'total-ev-display'} ${evClass(r[activeEvMetric])}" onclick="this.closest('.card').classList.toggle('open')" style="cursor:pointer;${evStyle(r[activeEvMetric])}">${Number(r[activeEvMetric]).toFixed(1)}%</span>
           </div>
@@ -8192,14 +8192,15 @@ body::before {
         return;
       }
 
-      const edgeOrder = { "Golf": 1, "Horse/Golf": 2, "Horses": 3 };
+      const edgeOrder = { "Golf": 1, "Horse/Golf": 2, "Horses": 3, "Tops": 4 };
       const shopOrder = { "Betfred Shop": 1, "Ladbrokes Shop": 2, "William Hill Shop": 3 };
-      const subOrder = { "Horse": 0, "Horses": 0, "DP": 1, "PGA": 2 };
+      const subOrder = { "Horse": 0, "Horses": 0, "Golf": 1, "DP": 2, "PGA": 3 };
 
       function normalisedSelectionEdge(selection = {}) {
         const label = selection.sourceLabel || `${selection.shopName || "Legacy Feed"} - ${selection.edgeName || "Legacy Edge"}`;
         const parts = sourcePartsFromLabel(label);
         const edge = String(parts.edgeName || selection.edgeName || selection.edgeType || "Horses");
+        if (edge.toLowerCase().includes("tops")) return "Tops";
         if (edge.toLowerCase().includes("horse/golf")) return "Horse/Golf";
         if (edge.toLowerCase().includes("golf")) return "Golf";
         return "Horses";
@@ -8216,6 +8217,7 @@ body::before {
         if (mainEdge === "Horse/Golf") {
           return isGolfSelection ? (selection.comp || compFromSheetName(selection.sourceSheetName || selection.sheetName || "") || "Golf") : "Horse";
         }
+        if (mainEdge === "Tops") return isGolfSelection ? "Golf" : "Horse";
         return "";
       }
 
@@ -8246,8 +8248,9 @@ body::before {
         const golfSelection = String(r.edgeType || r.edgeName || "").toLowerCase() === "golf" || String(r.edgeId || "").toLowerCase().includes("golf") || String(r.sourceSheetName || r.sheetName || "").toLowerCase().includes("golf");
         const sourceBadge = golfSelection && r.dataSource === "dg" ? `<span class="source-badge dg">DG</span>` : (golfSelection && r.dataSource === "ex" ? `<span class="source-badge ex">EX</span>` : "");
         const oddsMatched = golfSelection && r.selectionMatched ? `<span class="matched-under">(${r.selectionMatched})</span>` : "";
-        const selectionMetric = selectionEvMetric === "placeEv" ? "placeEv" : "totalEv";
-        const subLine = golfSelection ? `${r.meet} - ${Number(r.p || 0)} places` : `${r.meet} · ${r.time}`;
+        const topSelection = !!r.isTopMarket || String(r.edgeName || "").toLowerCase() === "tops";
+        const selectionMetric = topSelection ? "totalEv" : (selectionEvMetric === "placeEv" ? "placeEv" : "totalEv");
+        const subLine = golfSelection ? `${r.meet}${topSelection ? ` - ${r.topMarket || `Top ${Number(r.p || 0)}`}` : ` - ${Number(r.p || 0)} places`}` : `${r.meet} · ${r.time}`;
         const editKey = runnerKey(r);
         const savedAtLine = r.savedAt ? `<span class="matched-under">Saved ${escapeHtml(r.savedAt)}</span>` : "";
         return `
@@ -8260,14 +8263,26 @@ body::before {
             </span>
             <span class="odds">${money(r.odds)}${oddsMatched}</span>
             <span class="pt-stack">
-              <span class="pill p${r.p}">${r.p}</span>
-              <span class="pill term ${r.t === '1/4' ? 'term-quarter' : ''}">${r.t}</span>
+              ${topSelection ? `<span class="pill top-market-pill p${Number(r.p || 0)}"><span>Top</span><strong>${Number(r.p || 0)}</strong></span>` : `<span class="pill p${r.p}">${r.p}</span><span class="pill term ${r.t === '1/4' ? 'term-quarter' : ''}">${r.t}</span>`}
             </span>
             <span class="ev ${evClass(r[selectionMetric])}" style="${evStyle(r[selectionMetric])}">${Number(r[selectionMetric]).toFixed(1)}%</span>
           </div>
           <div class="more market-more selection-more ${golfSelection ? 'golf-more' : ''}">
             <div class="more-data">
-              ${golfSelection ? `
+              ${topSelection ? `
+                <div class="more-col">
+                  <h4>PRICE</h4>
+                  <div class="info-row"><span>Odds</span><strong>${money(r.winOdds)}</strong></div>
+                  <div class="info-row"><span>Fair</span><strong>${money(r.winF)}</strong></div>
+                  <div class="info-row"><span>EV</span><strong class="ev-chip ${evClass(r.totalEv)}" style="${evStyle(r.totalEv)}">${Number(r.totalEv).toFixed(1)}%</strong></div>
+                </div>
+                <div class="more-col">
+                  <h4>MARKET</h4>
+                  <div class="info-row"><span>Top</span><strong>${escapeHtml(r.topMarket || `Top ${Number(r.p || 0)}`)}</strong></div>
+                  <div class="info-row"><span>Mkt</span><strong>${escapeHtml(r.marketMatched || '—')}</strong></div>
+                  <div class="info-row"><span>Sel</span><strong>${escapeHtml(r.selectionMatched || '—')}</strong></div>
+                </div>
+              ` : golfSelection ? `
                 <div class="more-col">
                   <h4>WIN</h4>
                   <div class="info-row"><span>Odds</span><strong>${money(r.winOdds)}</strong></div>
@@ -8305,8 +8320,7 @@ body::before {
             <div class="selection-edit-panel" onclick="event.stopPropagation();">
               <label>Win Odds<input data-edit="winOdds" type="number" step="0.01" value="${Number(r.winOdds || r.odds || 0)}"></label>
               <label>Win Fair<input data-edit="winF" type="number" step="0.01" value="${Number(r.winF || 0)}"></label>
-              <label>Place Odds<input data-edit="placeOdds" type="number" step="0.01" value="${Number(r.placeOdds || 0)}"></label>
-              <label>Place Fair<input data-edit="placeF" type="number" step="0.01" value="${Number(r.placeF || 0)}"></label>
+              ${topSelection ? `` : `<label>Place Odds<input data-edit="placeOdds" type="number" step="0.01" value="${Number(r.placeOdds || 0)}"></label><label>Place Fair<input data-edit="placeF" type="number" step="0.01" value="${Number(r.placeF || 0)}"></label>`}
               <div class="selection-edit-actions"><button class="selection-reset-btn" type="button" onclick="resetSelectionToOriginal(this);">Reset</button><button class="selection-cancel-btn" type="button" onclick="closeSelectionEdit(this);">Cancel</button><button class="selection-save-btn" type="button" onclick="saveSelectionEdit(this);">Save</button></div>
             </div>
           </div>
@@ -8602,7 +8616,7 @@ body::before {
 
     function betSavedSourceOptions() {
       const shopMap = new Map();
-      (savedSelections || []).forEach(selection => {
+      (savedSelections || []).filter(selection => !selection.isTopMarket && String(selection.edgeName || "").toLowerCase() !== "tops").forEach(selection => {
         const group = betSavedSelectionGroup(selection);
         if (!shopMap.has(group.shopName)) shopMap.set(group.shopName, { shopName: group.shopName, shopClass: group.shopClass, edges: new Set() });
         shopMap.get(group.shopName).edges.add(group.edgeName);
@@ -8662,11 +8676,13 @@ body::before {
 
     function getBetSourceSelections() {
       if (betMakerState.sourceMode === "market") {
+        if (isTopsEdge()) return [];
         const marketRows = typeof getFiltered === "function" ? getFiltered() : runners;
-        return marketRows && marketRows.length ? marketRows : runners;
+        const eligibleRows = (marketRows && marketRows.length ? marketRows : runners).filter(selection => !selection.isTopMarket && String(selection.edgeName || "").toLowerCase() !== "tops");
+        return eligibleRows;
       }
 
-      const source = savedSelections || [];
+      const source = (savedSelections || []).filter(selection => !selection.isTopMarket && String(selection.edgeName || "").toLowerCase() !== "tops");
       const filters = ensureBetSavedSourceFilters();
       if (!filters.activeShop || !filters.activeEdge) return source;
       return source.filter(selection => {
@@ -9948,7 +9964,7 @@ body {
 
 </style>
 <script>
-  const APP_VERSION = "1.4.3";
+  const APP_VERSION = "1.4.4";
 
   function compareVersions(a, b) {
     const pa = String(a || "0").split('.').map(n => parseInt(n, 10) || 0);
@@ -10854,13 +10870,28 @@ body {
 
     /* WH Tops edge */
     .top-market-pill {
-      width:auto !important;
-      min-width:42px !important;
-      padding:0 6px !important;
-      background:rgba(72,145,210,.28) !important;
-      border:1px solid rgba(105,190,255,.22) !important;
-      color:#d8ecff !important;
-      white-space:nowrap;
+      width:30px !important;
+      min-width:30px !important;
+      height:34px !important;
+      padding:3px 2px !important;
+      flex-direction:column !important;
+      gap:0 !important;
+      line-height:1 !important;
+      white-space:normal !important;
+      box-sizing:border-box !important;
+    }
+    .top-market-pill span {
+      display:block;
+      font-size:7.5px;
+      font-weight:500;
+      line-height:1;
+      opacity:.9;
+    }
+    .top-market-pill strong {
+      display:block;
+      font-size:11px;
+      font-weight:700;
+      line-height:1.05;
     }
     .tops-more .more-data {
       width:100% !important;
